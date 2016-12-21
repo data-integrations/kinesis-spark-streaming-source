@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "spec-version": "1.0"
+  },
+  "configuration-groups": [
+    {
+      "label": "Kinesis Configuration",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Reference Name",
+          "name": "referenceName"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Application Name",
+          "name": "appName"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Stream Name",
+          "name": "streamName"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Kinesis endpoint url",
+          "name": "endpointUrl"
+        },
+        {
+          "widget-type": "select",
+          "label": "region",
+          "name": "region",
+          "widget-attributes": {
+            "values": [
+              "us-east-1",
+              "us-east-2",
+              "us-west-1",
+              "us-west-2",
+              "ca-central-1",
+              "ap-south-1",
+              "ap-northeast-2",
+              "ap-southeast-1",
+              "ap-southeast-2",
+              "ap-northeast-1",
+              "eu-central-1",
+              "eu-west-1",
+              "sa-east-1"
+            ],
+            "default": "us-east-1"
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Checkpoint interval duration",
+          "name": "duration"
+        },
+        {
+          "widget-type": "select",
+          "label": "Initial position in stream",
+          "name": "initialPosition",
+          "widget-attributes": {
+            "values": [
+              "LATEST",
+              "TRIM_HORIZON"
+            ],
+            "default": "LATEST"
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "AWS access key id",
+          "name": "awsAccessKeyId"
+        },
+        {
+          "widget-type": "password",
+          "label": "AWS access secret",
+          "name": "awsAccessSecret"
+        }
+      ]
+    },
+    {
+      "label": "Format",
+      "properties": [
+        {
+          "widget-type": "select",
+          "label": "Format",
+          "name": "format",
+          "widget-attributes": {
+            "values": [
+              "",
+              "avro",
+              "binary",
+              "clf",
+              "csv",
+              "grok",
+              "syslog",
+              "text",
+              "tsv"
+            ],
+            "default": ""
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "schema",
+      "widget-type": "schema",
+      "widget-attributes": {
+        "default-schema": {
+          "name": "etlSchemaBody",
+          "type": "record",
+          "fields": [
+            {
+              "name": "body",
+              "type": ["bytes", "null"]
+            }
+          ]
+        },
+        "schema-default-type": "string",
+        "property-watch": "format"
+      }
+    }
+  ]
+}
