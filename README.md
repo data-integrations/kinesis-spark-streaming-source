@@ -1,10 +1,11 @@
-=====================================
-Kinesis Spark Streaming Source Plugin
-=====================================
+# Kinesis Spark Streaming Source Plugin
 
-Introduction
-============
-Amazon Kinesis spark streaming source.
+[![cm-available](https://cdap-users.herokuapp.com/assets/cm-available.svg)](https://docs.cask.co/cdap/current/en/integrations/cask-market.html)
+![cdap-realtime-source](https://cdap-users.herokuapp.com/assets/cdap-realtime-source.svg)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Join CDAP community](https://cdap-users.herokuapp.com/badge.svg?t=wrangler)](https://cdap-users.herokuapp.com?t=1)
+
+The [Amazon Kinesis Spark Streaming Source](docs/KinesisSource-streamingsource.md) allows users to read from an Kinesis Stream in a CDAP Streaming pipeline.
 
 Getting Started
 ===============
