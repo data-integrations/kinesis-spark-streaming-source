@@ -14,20 +14,18 @@
  * the License.
  */
 
-package co.cask.hydrator.plugin.spark;
+package io.cdap.plugin.kinesis.streaming;
 
-import co.cask.cdap.api.Transactional;
-import co.cask.cdap.api.TxRunnable;
-import co.cask.cdap.api.data.DatasetContext;
-import co.cask.cdap.api.dataset.DatasetProperties;
-import co.cask.cdap.etl.api.PipelineConfigurer;
-import co.cask.cdap.etl.api.streaming.StreamingSource;
-import co.cask.hydrator.common.Constants;
-import co.cask.hydrator.common.IdUtils;
-import co.cask.hydrator.common.ReferencePluginConfig;
+import io.cdap.cdap.api.Transactional;
+import io.cdap.cdap.api.TxRunnable;
+import io.cdap.cdap.api.data.DatasetContext;
+import io.cdap.cdap.api.dataset.DatasetProperties;
+import io.cdap.cdap.etl.api.PipelineConfigurer;
+import io.cdap.cdap.etl.api.streaming.StreamingSource;
+import io.cdap.plugin.common.Constants;
+import io.cdap.plugin.common.IdUtils;
+import io.cdap.plugin.common.ReferencePluginConfig;
 import org.apache.tephra.TransactionFailureException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Base streaming source that adds an External Dataset for a reference name, and performs a single getDataset()
@@ -36,7 +34,7 @@ import org.slf4j.LoggerFactory;
  * @param <T> type of object read by the source.
  */
 public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
-  private static final Logger LOG = LoggerFactory.getLogger(ReferenceStreamingSource.class);
+
   private final ReferencePluginConfig conf;
 
   public ReferenceStreamingSource(ReferencePluginConfig conf) {
@@ -54,7 +52,7 @@ public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
   protected void registerUsage(Transactional transactional) throws TransactionFailureException {
     transactional.execute(new TxRunnable() {
       @Override
-      public void run(DatasetContext datasetContext) throws Exception {
+      public void run(DatasetContext datasetContext) {
         datasetContext.getDataset(conf.referenceName);
       }
     });

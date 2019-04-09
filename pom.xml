@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>groupId</groupId>
+    <groupId>io.cdap.plugin</groupId>
     <artifactId>Kinesis-sparkStreamingSource</artifactId>
     <version>1.1.0</version>
 
@@ -19,10 +19,10 @@
 
     <developers>
         <developer>
-            <name>Cask Data</name>
-            <email>cask-dev@googlegroups.com</email>
-            <organization>Cask Data, Inc.</organization>
-            <organizationUrl>http://www.cdap.io</organizationUrl>
+            <name>CDAP</name>
+            <email>cdap-dev@googlegroups.com</email>
+            <organization>CDAP</organization>
+            <organizationUrl>http://cdap.io</organizationUrl>
         </developer>
     </developers>
 
@@ -34,7 +34,7 @@
     </scm>
 
     <issueManagement>
-        <url>https://issues.cask.co/browse/HYDRATOR</url>
+        <url>https://issues.cask.co/browse/CDAP</url>
     </issueManagement>
 
     <distributionManagement>
@@ -46,10 +46,6 @@
             <id>sonatype.snapshots</id>
             <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
-        <site>
-            <id>cask</id>
-            <url>http://cask.co</url>
-        </site>
     </distributionManagement>
 
     <repositories>
@@ -64,33 +60,30 @@
     </repositories>
 
     <properties>
-        <cdap.version>5.1.2</cdap.version>
-        <hadoop.version>2.3.0</hadoop.version>
+        <cdap.version>6.0.0-SNAPSHOT</cdap.version>
+        <cdap.plugin.version>2.2.0-SNAPSHOT</cdap.plugin.version>
         <junit.version>4.11</junit.version>
-        <hydrator.version>2.1.0</hydrator.version>
-        <spark.version>1.6.2</spark.version>
+        <spark.version>2.3.3</spark.version>
         <widgets.dir>widgets</widgets.dir>
         <docs.dir>docs</docs.dir>
-        <app.parents>system:cdap-data-streams[5.0.0,6.0.0-SNAPSHOT)</app.parents>
-        <!-- this is here because project.basedir evaluates to null in the script build step -->
         <main.basedir>${project.basedir}</main.basedir>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>cdap-api</artifactId>
             <version>${cdap.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>cdap-etl-api</artifactId>
             <version>${cdap.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>cdap-unit-test</artifactId>
             <version>${cdap.version}</version>
             <scope>test</scope>
@@ -102,65 +95,43 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>cdap-formats</artifactId>
             <version>${cdap.version}</version>
         </dependency>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>cdap-etl-proto</artifactId>
             <version>${cdap.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>cdap-etl-batch</artifactId>
             <version>${cdap.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>cdap-data-pipeline</artifactId>
             <version>${cdap.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>co.cask.cdap</groupId>
+            <groupId>io.cdap.cdap</groupId>
             <artifactId>hydrator-test</artifactId>
             <version>${cdap.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>co.cask.hydrator</groupId>
+            <groupId>io.cdap.plugin</groupId>
             <artifactId>hydrator-common</artifactId>
-            <version>${hydrator.version}</version>
+            <version>${cdap.plugin.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>13.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-common</artifactId>
-            <version>${hadoop.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-mapreduce-client-core</artifactId>
-            <version>${hadoop.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>1.4</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.6</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -169,18 +140,19 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.2.5</version>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-streaming-kinesis-asl_2.11</artifactId>
+            <version>${spark.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming-kinesis-asl_2.10</artifactId>
-            <version>1.6.2</version>
+            <artifactId>spark-streaming_2.11</artifactId>
+            <version>${spark.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.10</artifactId>
+            <artifactId>spark-core_2.11</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope>
             <exclusions>
@@ -235,8 +207,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.7.0</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -247,7 +219,7 @@
                     <argLine>-Xmx3g -Djava.awt.headless=true -XX:MaxPermSize=256m -XX:+UseConcMarkSweepGC
                         -Djava.net.preferIPv4Stack=true
                     </argLine>
-                    <redirectTestOutputToFile>${surefire.redirectTestOutputToFile}</redirectTestOutputToFile>
+                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <reuseForks>false</reuseForks>
                     <reportFormat>plain</reportFormat>
                     <systemPropertyVariables>
@@ -358,86 +330,20 @@
                 </dependencies>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.7</version>
+                <groupId>io.cdap</groupId>
+                <artifactId>cdap-maven-plugin</artifactId>
+                <version>1.1.0</version>
+                <configuration>
+                    <cdapArtifacts>
+                        <parent>system:cdap-data-streams[6.0.0-SNAPSHOT,7.0.0-SNAPSHOT)</parent>
+                    </cdapArtifacts>
+                </configuration>
                 <executions>
-                    <!-- Create the config file for artifact which can be used to deploy the artifact.
-                         Sets the parents field to system:cdap-etl-batch and system:cdap-etl-realtime with whatever
-                         version range is set in the app.parents property.
-                         also sets a widget and doc property for each file contained in the widgets and docs directories. -->
                     <execution>
                         <id>create-artifact-config</id>
                         <phase>prepare-package</phase>
-                        <configuration>
-                            <target>
-                                <script language="javascript"> <![CDATA[
-                  // for some reason, project.basedir evaluates to null if we just get the property here.
-                  // so we set main.basedir to project.basedir in the pom properties, then main.basedir is used here
-                  // where it evaluates correctly for whatever reason
-                  var baseDir = project.getProperty("main.basedir");
-                  var targetDir = project.getProperty("project.build.directory");
-                  var artifactId = project.getProperty("project.artifactId");
-                  var version = project.getProperty("project.version");
-                  var cfgFile = new java.io.File(targetDir, artifactId + "-" + version + ".json");
-                  if (!cfgFile.exists()) {
-                    cfgFile.createNewFile();
-                  }
-                  var parents = project.getProperty("app.parents").split(",");
-                  var config = {
-                    "parents": [ ],
-                    "properties": {}
-                  }
-                  for (i = 0; i < parents.length; i+=2) {
-                    // because name1[lo,hi],name2[lo,hi] gets split into "name1[lo", "hi]", "name2[lo", "hi]"
-                    // so we have to combine them again
-                    config.parents.push(parents[i] + "," + parents[i+1]);
-                  }
-                  // look in widgets directory for widget config for each plugin
-                  var widgetsDir = new java.io.File(baseDir, project.getProperty("widgets.dir"));
-                  if (widgetsDir.isDirectory()) {
-                    var widgetsFiles = widgetsDir.listFiles();
-                    for (i = 0; i < widgetsFiles.length; i++) {
-                      var widgetsFile = widgetsFiles[i];
-                      if (widgetsFile.isFile()) {
-                        var propertyName = "widgets." + widgetsFile.getName();
-                        // if the filename ends with .json
-                        if (propertyName.indexOf(".json", propertyName.length - 5) !== -1) {
-                          // strip the .json
-                          propertyName = propertyName.slice(0, -5);
-                          var contents = new java.lang.String(java.nio.file.Files.readAllBytes(widgetsFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-                          var contentsAsJson = JSON.parse(contents);
-                          config.properties[propertyName] = JSON.stringify(contentsAsJson);
-                        }
-                      }
-                    }
-                  }
-                  // look in the docs directory for docs for each plugin
-                  var docsDir = new java.io.File(baseDir, project.getProperty("docs.dir"));
-                  if (docsDir.isDirectory()) {
-                    var docFiles = docsDir.listFiles();
-                    for (i = 0; i < docFiles.length; i++) {
-                      var docFile = docFiles[i];
-                      if (docFile.isFile()) {
-                        var propertyName = "doc." + docFile.getName();
-                        // if the filename ends with .md
-                        if (propertyName.indexOf(".md", propertyName.length - 3) !== -1) {
-                          // strip the extension
-                          propertyName = propertyName.slice(0, -3);
-                          var contents = new java.lang.String(java.nio.file.Files.readAllBytes(docFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-                          config.properties[propertyName] = contents + "";
-                        }
-                      }
-                    }
-                  }
-                  var fw = new java.io.BufferedWriter(new java.io.FileWriter(cfgFile.getAbsoluteFile()));
-                  fw.write(JSON.stringify(config, null, 2));
-                  fw.close();
-                ]]></script>
-                            </target>
-                        </configuration>
                         <goals>
-                            <goal>run</goal>
+                            <goal>create-plugin-json</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -449,7 +355,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
-                        <_exportcontents>co.cask.hydrator.plugin.*;com.amazonaws.services.kinesis.*;
+                        <_exportcontents>io.cdap.plugin.kinesis.streaming.*;com.amazonaws.services.kinesis.*;
                             org.apache.spark.streaming.kinesis.*;org.apache.spark.streaming.scheduler.*;
                             com.amazonaws.*;com.amazonaws.protocol.json.*;
                         </_exportcontents>
