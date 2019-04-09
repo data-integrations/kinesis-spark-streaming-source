@@ -14,10 +14,9 @@
  * the License.
  */
 
-package co.cask.hydrator.plugin;
+package io.cdap.plugin.kinesis.streaming;
 
-import co.cask.cdap.api.data.schema.Schema;
-import co.cask.hydrator.plugin.spark.KinesisStreamingSource;
+import io.cdap.cdap.api.data.schema.Schema;
 import org.junit.Assert;
 import org.junit.Test;
 

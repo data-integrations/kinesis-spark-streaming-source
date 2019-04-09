@@ -14,28 +14,27 @@
  * the License.
  */
 
-package co.cask.hydrator.plugin.spark;
+package io.cdap.plugin.kinesis.streaming;
 
-import co.cask.cdap.api.annotation.Description;
-import co.cask.cdap.api.annotation.Macro;
-import co.cask.cdap.api.annotation.Name;
-import co.cask.cdap.api.annotation.Plugin;
-import co.cask.cdap.api.data.format.FormatSpecification;
-import co.cask.cdap.api.data.format.RecordFormat;
-import co.cask.cdap.api.data.format.StructuredRecord;
-import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.api.flow.flowlet.StreamEvent;
-import co.cask.cdap.etl.api.PipelineConfigurer;
-import co.cask.cdap.etl.api.streaming.StreamingContext;
-import co.cask.cdap.etl.api.streaming.StreamingSource;
-import co.cask.cdap.format.RecordFormats;
-import co.cask.hydrator.common.ReferencePluginConfig;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import io.cdap.cdap.api.annotation.Description;
+import io.cdap.cdap.api.annotation.Macro;
+import io.cdap.cdap.api.annotation.Name;
+import io.cdap.cdap.api.annotation.Plugin;
+import io.cdap.cdap.api.data.format.FormatSpecification;
+import io.cdap.cdap.api.data.format.RecordFormat;
+import io.cdap.cdap.api.data.format.StructuredRecord;
+import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.etl.api.PipelineConfigurer;
+import io.cdap.cdap.etl.api.streaming.StreamingContext;
+import io.cdap.cdap.etl.api.streaming.StreamingSource;
+import io.cdap.cdap.format.RecordFormats;
+import io.cdap.plugin.common.ReferencePluginConfig;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Duration;
@@ -142,7 +141,7 @@ public class KinesisStreamingSource extends ReferenceStreamingSource<StructuredR
   private static class FormatFunction implements Function<byte[] , StructuredRecord> {
     private final KinesisStreamConfig config;
     private transient Schema outputSchema;
-    private transient RecordFormat<StreamEvent, StructuredRecord> recordFormat;
+    private transient RecordFormat<ByteBuffer, StructuredRecord> recordFormat;
 
     FormatFunction(KinesisStreamConfig config) {
       this.config = config;
@@ -159,7 +158,7 @@ public class KinesisStreamingSource extends ReferenceStreamingSource<StructuredR
         recordFormat = RecordFormats.createInitializedFormat(spec);
       }
       StructuredRecord.Builder builder = StructuredRecord.builder(outputSchema);
-      StructuredRecord messageRecord = recordFormat.read(new StreamEvent(ByteBuffer.wrap(data)));
+      StructuredRecord messageRecord = recordFormat.read(ByteBuffer.wrap(data));
       for (Schema.Field messageField : messageRecord.getSchema().getFields()) {
         String fieldName = messageField.getName();
         builder.set(fieldName, messageRecord.get(fieldName));
