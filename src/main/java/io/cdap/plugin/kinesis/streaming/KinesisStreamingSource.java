@@ -16,38 +16,25 @@
 
 package io.cdap.plugin.kinesis.streaming;
 
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import io.cdap.cdap.api.annotation.Description;
 import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.annotation.Plugin;
 import io.cdap.cdap.api.data.format.FormatSpecification;
-import io.cdap.cdap.api.data.format.RecordFormat;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.etl.api.FailureCollector;
 import io.cdap.cdap.etl.api.PipelineConfigurer;
 import io.cdap.cdap.etl.api.streaming.StreamingContext;
 import io.cdap.cdap.etl.api.streaming.StreamingSource;
 import io.cdap.cdap.format.RecordFormats;
 import io.cdap.plugin.common.ReferencePluginConfig;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.storage.StorageLevel;
-import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.api.java.JavaDStream;
-import org.apache.spark.streaming.api.java.JavaStreamingContext;
-import org.apache.spark.streaming.kinesis.KinesisUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import javax.annotation.Nullable;
@@ -59,7 +46,6 @@ import javax.annotation.Nullable;
 @Name("KinesisSource")
 @Description("Kinesis streaming source.")
 public class KinesisStreamingSource extends ReferenceStreamingSource<StructuredRecord> {
-  private static final Logger LOG = LoggerFactory.getLogger(KinesisStreamingSource.class);
   private final KinesisStreamConfig config;
 
   public KinesisStreamingSource(KinesisStreamConfig config) {
@@ -70,124 +56,43 @@ public class KinesisStreamingSource extends ReferenceStreamingSource<StructuredR
   @Override
   public void configurePipeline(PipelineConfigurer pipelineConfigurer) {
     super.configurePipeline(pipelineConfigurer);
-    config.validate();
+    config.validate(pipelineConfigurer.getStageConfigurer().getFailureCollector());
   }
 
   @Override
   public JavaDStream<StructuredRecord> getStream(StreamingContext streamingContext) throws Exception {
     registerUsage(streamingContext);
-    BasicAWSCredentials awsCred = new BasicAWSCredentials(config.awsAccessKeyId, config.awsAccessSecret);
-    AmazonKinesisClient kinesisClient = new AmazonKinesisClient(awsCred);
-    JavaStreamingContext javaStreamingContext = streamingContext.getSparkStreamingContext();
-    Duration kinesisCheckpointInterval = new Duration(config.duration);
-
-    int numShards = kinesisClient.describeStream(config.streamName).getStreamDescription().getShards().size();
-    List<JavaDStream<byte[]>> streamsList = new ArrayList<>(numShards);
-    LOG.debug("creating {} spark executors for {} shards", numShards, numShards);
-    //Creating spark executors based on the number of shards in the stream
-    for (int i = 0; i < numShards; i++) {
-      streamsList.add(
-        KinesisUtils.createStream(javaStreamingContext, config.appName, config.streamName, config.endpoint,
-                                  config.region, config.getInitialPosition(), kinesisCheckpointInterval,
-                                  StorageLevel.MEMORY_AND_DISK_2(), config.awsAccessKeyId, config.awsAccessSecret)
-      );
-    }
-
-    // Union all the streams if there is more than 1 stream
-    JavaDStream<byte[]> kinesisStream;
-    if (streamsList.size() > 1) {
-      kinesisStream = javaStreamingContext.union(streamsList.get(0), streamsList.subList(1, streamsList.size()));
-    } else {
-      // Otherwise, just use the 1 stream
-      kinesisStream = streamsList.get(0);
-    }
-    return kinesisStream.map(config.getFormat() == null ? new BytesFunction(config) : new FormatFunction(config));
-  }
-
-  /**
-   * Transforms Kinesis payload into a structured record when message format is not given.
-   * Everything here should be serializable, as Spark Streaming will serialize all functions.
-   * Output schema must contain only 1 field of type bytes
-   */
-  private static class BytesFunction implements Function<byte[] , StructuredRecord> {
-    private final KinesisStreamConfig config;
-    private transient String messageField;
-    private transient Schema schema;
-
-    BytesFunction(KinesisStreamConfig config) {
-      this.config = config;
-    }
-
-    @Override
-    public StructuredRecord call(byte[] data) throws Exception {
-      // first time this was called, initialize schema
-      if (schema == null) {
-        schema = config.parseSchema();
-        StructuredRecord.Builder recordBuilder = StructuredRecord.builder(schema);
-        messageField = schema.getFields().get(0).getName();
-        recordBuilder.set(messageField, data);
-        return recordBuilder.build();
-      }
-      StructuredRecord.Builder recordBuilder = StructuredRecord.builder(schema);
-      recordBuilder.set(messageField, data);
-      return recordBuilder.build();
-    }
-  }
-
-  /**
-   * Transforms Kinesis payload into a structured record when message format and schema are given.
-   * Everything here should be serializable, as Spark Streaming will serialize all functions.
-   */
-  private static class FormatFunction implements Function<byte[] , StructuredRecord> {
-    private final KinesisStreamConfig config;
-    private transient Schema outputSchema;
-    private transient RecordFormat<ByteBuffer, StructuredRecord> recordFormat;
-
-    FormatFunction(KinesisStreamConfig config) {
-      this.config = config;
-    }
-
-    @Override
-    public StructuredRecord call(byte[] data) throws Exception {
-      // first time this was called, initialize schema
-      if (recordFormat == null) {
-        outputSchema = config.parseSchema();
-        Schema messageSchema = config.parseSchema();
-        FormatSpecification spec =
-          new FormatSpecification(config.getFormat(), messageSchema, new HashMap<String, String>());
-        recordFormat = RecordFormats.createInitializedFormat(spec);
-      }
-      StructuredRecord.Builder builder = StructuredRecord.builder(outputSchema);
-      StructuredRecord messageRecord = recordFormat.read(ByteBuffer.wrap(data));
-      for (Schema.Field messageField : messageRecord.getSchema().getFields()) {
-        String fieldName = messageField.getName();
-        builder.set(fieldName, messageRecord.get(fieldName));
-      }
-      return builder.build();
-    }
+    return KinesisStreamingSourceUtil.getStructuredRecordJavaDStream(streamingContext, config);
   }
 
   /**
    * config file for Kinesis stream sink
    */
   public static class KinesisStreamConfig extends ReferencePluginConfig implements Serializable {
+    private static final String APP_NAME = "appName";
+    private static final String STREAM_NAME = "streamName";
+    private static final String ENDPOINT_URL = "endpointUrl";
+    private static final String REGION = "region";
+    private static final String ACCESS_KEY_ID = "awsAccessKeyId";
+    private static final String ACCESS_SECRET = "awsAccessSecret";
+    private static final String SCHEMA = "schema";
 
-    @Name("appName")
+    @Name(APP_NAME)
     @Description("The application name that will be used to checkpoint the Kinesis sequence numbers in DynamoDB table")
     @Macro
     private final String appName;
 
-    @Name("streamName")
+    @Name(STREAM_NAME)
     @Description("The name of the Kinesis stream to the get the data from. The stream should be active")
     @Macro
     private final String streamName;
 
-    @Name("endpointUrl")
+    @Name(ENDPOINT_URL)
     @Description("Valid Kinesis endpoint URL eg. kinesis.us-east-1.amazonaws.com")
     @Macro
     private final String endpoint;
 
-    @Name("region")
+    @Name(REGION)
     @Description("AWS region specific to the stream")
     @Macro
     private final String region;
@@ -202,12 +107,12 @@ public class KinesisStreamingSource extends ReferenceStreamingSource<StructuredR
     @Description("Can be either TRIM_HORIZON or LATEST, Default position will be Latest")
     private final String initialPosition;
 
-    @Name("awsAccessKeyId")
+    @Name(ACCESS_KEY_ID)
     @Description("AWS access Id having access to Kinesis streams")
     @Macro
     private final String awsAccessKeyId;
 
-    @Name("awsAccessSecret")
+    @Name(ACCESS_SECRET)
     @Description("AWS access key secret having access to Kinesis streams")
     @Macro
     private final String awsAccessSecret;
@@ -251,64 +156,115 @@ public class KinesisStreamingSource extends ReferenceStreamingSource<StructuredR
       }
     }
 
-    public void validate() {
-      Preconditions.checkArgument(!Strings.isNullOrEmpty(streamName),
-                                  "Stream name should be non-null, non-empty.");
-      Preconditions.checkArgument(!Strings.isNullOrEmpty(awsAccessKeyId),
-                                  "Access Key should be non-null, non-empty.");
-      Preconditions.checkArgument(!Strings.isNullOrEmpty(awsAccessSecret),
-                                  "Access Key secret should be non-null, non-empty.");
-      Preconditions.checkArgument(!Strings.isNullOrEmpty(region),
-                                  "Region name should be non-null, non-empty.");
-      Preconditions.checkArgument(!Strings.isNullOrEmpty(appName),
-                                  "Application name should be non-null, non-empty.");
-      Preconditions.checkArgument(!Strings.isNullOrEmpty(endpoint),
-                                  "Endpoint url should be non-null, non-empty.");
-      Preconditions.checkArgument(!Strings.isNullOrEmpty(schema),
-                                  "Schema should be non-null, non-empty.");
+    public void validate(FailureCollector collector) {
+      if (!containsMacro(STREAM_NAME) && Strings.isNullOrEmpty(streamName)) {
+        collector.addFailure("Stream name should be non-null, non-empty.", null).withConfigProperty(STREAM_NAME);
+      }
+      if (!containsMacro(ACCESS_KEY_ID) && Strings.isNullOrEmpty(awsAccessKeyId)) {
+        collector.addFailure("Access Key should be non-null, non-empty.", null).withConfigProperty(ACCESS_KEY_ID);
+      }
+      if (!containsMacro(ACCESS_SECRET) && Strings.isNullOrEmpty(awsAccessSecret)) {
+        collector.addFailure("Access Key secret should be non-null, non-empty.", null)
+          .withConfigProperty(ACCESS_SECRET);
+      }
+      if (!containsMacro(REGION) && Strings.isNullOrEmpty(region)) {
+        collector.addFailure("Region name should be non-null, non-empty.", null).withConfigProperty(REGION);
+      }
+      if (!containsMacro(APP_NAME) && Strings.isNullOrEmpty(appName)) {
+        collector.addFailure("Application name should be non-null, non-empty.", null).withConfigProperty(APP_NAME);
+      }
+      if (!containsMacro(ENDPOINT_URL) && Strings.isNullOrEmpty(endpoint)) {
+        collector.addFailure("Endpoint url should be non-null, non-empty.", null).withConfigProperty(ENDPOINT_URL);
+      }
+      if (!containsMacro(SCHEMA) && Strings.isNullOrEmpty(schema)) {
+        collector.addFailure("Schema should be non-null, non-empty.", null).withConfigProperty(SCHEMA);
+      }
 
-      Schema messageSchema = parseSchema();
-      // if format is empty, there must be just a single message field of type bytes or nullable types.
-      if (Strings.isNullOrEmpty(format)) {
-        List<Schema.Field> messageFields = messageSchema.getFields();
-        if (messageFields.size() > 1) {
-          List<String> fieldNames = new ArrayList<>();
-          for (Schema.Field messageField : messageFields) {
-            fieldNames.add(messageField.getName());
-          }
-          throw new IllegalArgumentException(String.format(
-            "Without a format, the schema must contain just a single message field of type bytes or nullable bytes. " +
-              "Found %s message fields (%s).", messageFields.size(), Joiner.on(',').join(fieldNames)));
-        }
-        Schema.Field messageField = messageFields.get(0);
-        Schema messageFieldSchema = messageField.getSchema();
-        Schema.Type messageFieldType = messageFieldSchema.isNullable() ?
-          messageFieldSchema.getNonNullable().getType() : messageFieldSchema.getType();
-        if (messageFieldType != Schema.Type.BYTES) {
-          throw new IllegalArgumentException(String.format(
-            "Without a format, the message field must be of type bytes or nullable bytes, but field %s is of type %s.",
-            messageField.getName(), messageField.getSchema()));
-        }
-      } else {
-        // otherwise, if there is a format, make sure we can instantiate it.
-        FormatSpecification formatSpec = new FormatSpecification(format, messageSchema, new HashMap<String, String>());
-
+      if (!containsMacro(SCHEMA) && !Strings.isNullOrEmpty(schema)) {
         try {
-          RecordFormats.createInitializedFormat(formatSpec);
-        } catch (Exception e) {
-          throw new IllegalArgumentException(String.format(
-            "Unable to instantiate a message parser from format '%s' and message schema '%s': %s",
-            format, messageSchema, e.getMessage()), e);
+          Schema messageSchema = parseSchema();
+          // if format is empty, there must be just a single message field of type bytes or nullable types.
+          if (Strings.isNullOrEmpty(format)) {
+            List<Schema.Field> messageFields = messageSchema.getFields();
+            if (messageFields.size() > 1) {
+              for (int i = 1; i < messageFields.size(); i++) {
+                Schema.Field messageField = messageFields.get(i);
+                collector.addFailure(
+                  String.format("Without format, field '%s' must contain just a single message field of type " +
+                                  "bytes or nullable bytes.", messageField.getName()),
+                  "Remove the field or change the format.")
+                  .withOutputSchemaField(messageField.getName());
+              }
+            }
+            Schema.Field messageField = messageFields.get(0);
+            Schema messageFieldSchema = messageField.getSchema().isNullable() ?
+              messageField.getSchema().getNonNullable() : messageField.getSchema();
+            Schema.Type messageFieldType = messageFieldSchema.getType();
+            Schema.LogicalType messageFieldLogicalType = messageFieldSchema.getLogicalType();
+            if (messageFieldType != Schema.Type.BYTES || messageFieldLogicalType != null) {
+              collector.addFailure(
+                String.format(
+                  "Without a format, the message field must be of type bytes or nullable bytes, " +
+                    "but field '%s' is of unexpected type '%s'.",
+                  messageField.getName(), messageFieldSchema.getDisplayName()), null)
+                .withOutputSchemaField(messageField.getName());
+            }
+          } else {
+            // otherwise, if there is a format, make sure we can instantiate it.
+            FormatSpecification formatSpec = new FormatSpecification(format, messageSchema, new HashMap<>());
+
+            try {
+              RecordFormats.createInitializedFormat(formatSpec);
+            } catch (Exception e) {
+              collector.addFailure(String.format(
+                "Unable to instantiate a message parser from format '%s': %s", format, e.getMessage()), null)
+                .withStacktrace(e.getStackTrace());
+            }
+          }
+        } catch (IllegalArgumentException e) {
+          collector.addFailure(e.getMessage(), null).withConfigProperty(SCHEMA).withStacktrace(e.getStackTrace());
         }
       }
     }
 
-    private InitialPositionInStream getInitialPosition() {
+    InitialPositionInStream getInitialPosition() {
       if (initialPosition.equalsIgnoreCase(InitialPositionInStream.TRIM_HORIZON.name())) {
         return InitialPositionInStream.TRIM_HORIZON;
       } else {
         return InitialPositionInStream.LATEST;
       }
+    }
+
+    String getAppName() {
+      return appName;
+    }
+
+    String getStreamName() {
+      return streamName;
+    }
+
+    String getEndpoint() {
+      return endpoint;
+    }
+
+    String getRegion() {
+      return region;
+    }
+
+    Integer getDuration() {
+      return duration;
+    }
+
+    String getAwsAccessKeyId() {
+      return awsAccessKeyId;
+    }
+
+    String getAwsAccessSecret() {
+      return awsAccessSecret;
+    }
+
+    String getSchema() {
+      return schema;
     }
   }
 }
