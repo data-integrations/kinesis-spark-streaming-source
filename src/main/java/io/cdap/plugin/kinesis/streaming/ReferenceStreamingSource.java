@@ -45,7 +45,7 @@ public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
   public void configurePipeline(PipelineConfigurer pipelineConfigurer) throws IllegalArgumentException {
     super.configurePipeline(pipelineConfigurer);
     // Verify that reference name meets dataset id constraints
-    IdUtils.validateId(conf.referenceName);
+    IdUtils.validateReferenceName(conf.referenceName, pipelineConfigurer.getStageConfigurer().getFailureCollector());
     pipelineConfigurer.createDataset(conf.referenceName, Constants.EXTERNAL_DATASET_TYPE, DatasetProperties.EMPTY);
   }
 

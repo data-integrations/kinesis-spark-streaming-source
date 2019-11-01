@@ -17,8 +17,13 @@
 package io.cdap.plugin.kinesis.streaming;
 
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.etl.api.validation.CauseAttributes;
+import io.cdap.cdap.etl.api.validation.ValidationFailure;
+import io.cdap.cdap.etl.mock.validation.MockFailureCollector;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.List;
 
 /**
  * Tests for KinesisStreamConfig
@@ -61,20 +66,24 @@ public class KinesisConfigTest {
   }
 
   // Test with null schema
-  @Test(expected = IllegalArgumentException.class)
-  public void testNullSchemaError() throws Exception {
+  @Test
+  public void testNullSchemaError() {
     String endpointUrl = "kinesis.us-east-1.amazonaws.com";
     String region = "us-east-1";
     KinesisStreamingSource.KinesisStreamConfig config;
     config = new KinesisStreamingSource.KinesisStreamConfig("KinesisSource", "newapp", "teststream", endpointUrl,
                                                             region, 2000, "TRIM_HORIZON", "someKey", "someId", null,
                                                             null);
-    config.validate();
+    MockFailureCollector collector = new MockFailureCollector();
+    config.validate(collector);
+    List<ValidationFailure> failures = collector.getValidationFailures();
+    Assert.assertEquals(1, failures.size());
+    Assert.assertEquals("schema", failures.get(0).getCauses().get(0).getAttribute(CauseAttributes.STAGE_CONFIG));
   }
 
   // Test with null format and output schema with field of type string
-  @Test(expected = IllegalArgumentException.class)
-  public void testNullFormatStringOutputError() throws Exception {
+  @Test
+  public void testNullFormatStringOutputError() {
     Schema schema = Schema.recordOf("kinesis", Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
     String endpointUrl = "kinesis.us-east-1.amazonaws.com";
     String region = "us-east-1";
@@ -82,12 +91,16 @@ public class KinesisConfigTest {
     config = new KinesisStreamingSource.KinesisStreamConfig("KinesisSource", "newapp", "teststream", endpointUrl,
                                                             region, 2000, "TRIM_HORIZON", "someKey", "someId", null,
                                                             schema.toString());
-    config.validate();
+    MockFailureCollector collector = new MockFailureCollector();
+    config.validate(collector);
+    List<ValidationFailure> failures = collector.getValidationFailures();
+    Assert.assertEquals(1, failures.size());
+    Assert.assertEquals("body", failures.get(0).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
   }
 
   // Test with null format and multiple fields in output schema
-  @Test(expected = IllegalArgumentException.class)
-  public void testMultipleFieldsError() throws Exception {
+  @Test
+  public void testMultipleFieldsError() {
     Schema schema = Schema.recordOf("kinesis", Schema.Field.of("body", Schema.of(Schema.Type.STRING)),
                                     Schema.Field.of("body2", Schema.of(Schema.Type.STRING)));
     String endpointUrl = "kinesis.us-east-1.amazonaws.com";
@@ -96,10 +109,16 @@ public class KinesisConfigTest {
     config = new KinesisStreamingSource.KinesisStreamConfig("KinesisSource", "newapp", "teststream", endpointUrl,
                                                             region, 2000, "TRIM_HORIZON", "someKey", "someId", null,
                                                             schema.toString());
-    config.validate();
+    MockFailureCollector collector = new MockFailureCollector();
+    config.validate(collector);
+    List<ValidationFailure> failures = collector.getValidationFailures();
+    Assert.assertEquals(3, failures.size());
+    Assert.assertEquals("body", failures.get(0).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
+    Assert.assertEquals("body2", failures.get(1).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
+    Assert.assertEquals("body", failures.get(2).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testBadFormatErrors() {
     Schema schema = Schema.recordOf("kinesis", Schema.Field.of("body", Schema.of(Schema.Type.BYTES)),
                                     Schema.Field.of("body2", Schema.of(Schema.Type.STRING)));
@@ -109,6 +128,9 @@ public class KinesisConfigTest {
     config = new KinesisStreamingSource.KinesisStreamConfig("KinesisSource", "newapp", "teststream", endpointUrl,
                                                             region, 2000, "TRIM_HORIZON", "someKey", "someId",
                                                             "badFormat", schema.toString());
-    config.validate();
+    MockFailureCollector collector = new MockFailureCollector();
+    config.validate(collector);
+    List<ValidationFailure> failures = collector.getValidationFailures();
+    Assert.assertEquals(1, failures.size());
   }
 }
