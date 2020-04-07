@@ -16,10 +16,12 @@
 
 package io.cdap.plugin.kinesis.streaming;
 
+import com.google.common.base.Preconditions;
 import io.cdap.cdap.api.Transactional;
 import io.cdap.cdap.api.TxRunnable;
 import io.cdap.cdap.api.data.DatasetContext;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.api.dataset.DatasetManagementException;
 import io.cdap.cdap.api.dataset.DatasetProperties;
 import io.cdap.cdap.etl.api.PipelineConfigurer;
 import io.cdap.cdap.etl.api.streaming.StreamingSource;
@@ -67,6 +69,7 @@ public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
   /**
    * Record field-level lineage for streaming source plugins (ReadOperation). This method should be called from
    * prepareRun of any streaming source plugin.
+   *
    * @param context StreamingSourceContext from prepareRun
    * @param outputName name of output dataset
    * @param tableSchema schema of fields. Also used to determine list of field names. Schema and schema.getFields() must
@@ -75,11 +78,15 @@ public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
    * @param description operation description; complete sentences preferred
    */
   protected void recordLineage(StreamingSourceContext context, String outputName, Schema tableSchema,
-                               String operationName, String description) {
-    LineageRecorder lineageRecorder = new LineageRecorder(context, outputName);
-    lineageRecorder.createExternalDataset(tableSchema);
+                               String operationName, String description)
+    throws DatasetManagementException, TransactionFailureException {
+    Preconditions.checkNotNull(tableSchema, "schema for output %s is null.", outputName);
+    Preconditions.checkNotNull(tableSchema.getFields(), "schema.getFields() for output %s is null.", outputName);
+
+    context.registerLineage(outputName, tableSchema);
     List<String> fieldNames = tableSchema.getFields().stream().map(Schema.Field::getName).collect(Collectors.toList());
     if (!fieldNames.isEmpty()) {
+      LineageRecorder lineageRecorder = new LineageRecorder(context, outputName);
       lineageRecorder.recordRead(operationName, description, fieldNames);
     }
   }
