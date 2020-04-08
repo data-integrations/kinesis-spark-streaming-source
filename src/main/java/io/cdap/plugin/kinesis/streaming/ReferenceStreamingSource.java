@@ -16,7 +16,6 @@
 
 package io.cdap.plugin.kinesis.streaming;
 
-import com.google.common.base.Preconditions;
 import io.cdap.cdap.api.Transactional;
 import io.cdap.cdap.api.TxRunnable;
 import io.cdap.cdap.api.data.DatasetContext;
@@ -31,6 +30,8 @@ import io.cdap.plugin.common.IdUtils;
 import io.cdap.plugin.common.LineageRecorder;
 import io.cdap.plugin.common.ReferencePluginConfig;
 import org.apache.tephra.TransactionFailureException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
  * @param <T> type of object read by the source.
  */
 public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(ReferenceStreamingSource.class);
 
   private final ReferencePluginConfig conf;
 
@@ -80,8 +82,14 @@ public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
   protected void recordLineage(StreamingSourceContext context, String outputName, Schema tableSchema,
                                String operationName, String description)
     throws DatasetManagementException, TransactionFailureException {
-    Preconditions.checkNotNull(tableSchema, "schema for output %s is null.", outputName);
-    Preconditions.checkNotNull(tableSchema.getFields(), "schema.getFields() for output %s is null.", outputName);
+    if (tableSchema == null) {
+      LOG.warn("Schema for output %s is null. Field-level lineage will not be recorded", outputName);
+      return;
+    }
+    if (tableSchema.getFields() == null) {
+      LOG.warn("schema.getFields() for output %s is null. Field-level lineage will not be recorded", outputName);
+      return;
+    }
 
     context.registerLineage(outputName, tableSchema);
     List<String> fieldNames = tableSchema.getFields().stream().map(Schema.Field::getName).collect(Collectors.toList());
