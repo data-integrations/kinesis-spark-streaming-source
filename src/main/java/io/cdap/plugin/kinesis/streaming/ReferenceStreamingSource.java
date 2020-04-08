@@ -19,13 +19,22 @@ package io.cdap.plugin.kinesis.streaming;
 import io.cdap.cdap.api.Transactional;
 import io.cdap.cdap.api.TxRunnable;
 import io.cdap.cdap.api.data.DatasetContext;
+import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.api.dataset.DatasetManagementException;
 import io.cdap.cdap.api.dataset.DatasetProperties;
 import io.cdap.cdap.etl.api.PipelineConfigurer;
 import io.cdap.cdap.etl.api.streaming.StreamingSource;
+import io.cdap.cdap.etl.api.streaming.StreamingSourceContext;
 import io.cdap.plugin.common.Constants;
 import io.cdap.plugin.common.IdUtils;
+import io.cdap.plugin.common.LineageRecorder;
 import io.cdap.plugin.common.ReferencePluginConfig;
 import org.apache.tephra.TransactionFailureException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Base streaming source that adds an External Dataset for a reference name, and performs a single getDataset()
@@ -34,6 +43,7 @@ import org.apache.tephra.TransactionFailureException;
  * @param <T> type of object read by the source.
  */
 public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
+  private static final Logger LOG = LoggerFactory.getLogger(ReferenceStreamingSource.class);
 
   private final ReferencePluginConfig conf;
 
@@ -58,4 +68,34 @@ public abstract class ReferenceStreamingSource<T> extends StreamingSource<T> {
     });
   }
 
+  /**
+   * Record field-level lineage for streaming source plugins (ReadOperation). This method should be called from
+   * prepareRun of any streaming source plugin.
+   *
+   * @param context StreamingSourceContext from prepareRun
+   * @param outputName name of output dataset
+   * @param tableSchema schema of fields. Also used to determine list of field names. Schema and schema.getFields() must
+   * not be null.
+   * @param operationName name of the operation
+   * @param description operation description; complete sentences preferred
+   */
+  protected void recordLineage(StreamingSourceContext context, String outputName, Schema tableSchema,
+                               String operationName, String description)
+    throws DatasetManagementException, TransactionFailureException {
+    if (tableSchema == null) {
+      LOG.warn("Schema for output %s is null. Field-level lineage will not be recorded", outputName);
+      return;
+    }
+    if (tableSchema.getFields() == null) {
+      LOG.warn("Schema fields for output %s is empty. Field-level lineage will not be recorded", outputName);
+      return;
+    }
+
+    context.registerLineage(outputName, tableSchema);
+    List<String> fieldNames = tableSchema.getFields().stream().map(Schema.Field::getName).collect(Collectors.toList());
+    if (!fieldNames.isEmpty()) {
+      LineageRecorder lineageRecorder = new LineageRecorder(context, outputName);
+      lineageRecorder.recordRead(operationName, description, fieldNames);
+    }
+  }
 }

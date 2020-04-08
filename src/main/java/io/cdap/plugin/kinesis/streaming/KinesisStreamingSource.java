@@ -29,6 +29,7 @@ import io.cdap.cdap.etl.api.FailureCollector;
 import io.cdap.cdap.etl.api.PipelineConfigurer;
 import io.cdap.cdap.etl.api.streaming.StreamingContext;
 import io.cdap.cdap.etl.api.streaming.StreamingSource;
+import io.cdap.cdap.etl.api.streaming.StreamingSourceContext;
 import io.cdap.cdap.format.RecordFormats;
 import io.cdap.plugin.common.ReferencePluginConfig;
 import org.apache.spark.streaming.api.java.JavaDStream;
@@ -57,6 +58,17 @@ public class KinesisStreamingSource extends ReferenceStreamingSource<StructuredR
   public void configurePipeline(PipelineConfigurer pipelineConfigurer) {
     super.configurePipeline(pipelineConfigurer);
     config.validate(pipelineConfigurer.getStageConfigurer().getFailureCollector());
+  }
+
+  @Override
+  public void prepareRun(StreamingSourceContext context) throws Exception {
+    super.prepareRun(context);
+
+    Schema schema = context.getInputSchema();
+    if (schema != null && schema.getFields() != null) {
+      recordLineage(context, config.referenceName, schema,
+                    "Read", String.format("Read from Kinesis Stream named %s.", config.streamName));
+    }
   }
 
   @Override
