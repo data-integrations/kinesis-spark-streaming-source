@@ -42,8 +42,8 @@ This example will read from Kinesis stream named 'MyKinesisStream'. It will spin
 given stream. It starts pulling from the last checkpointed sequence number of the given stream.
 
     {
-        "name": "MyKinesisStream",
-        "type": "KinesisSource",
+        "name": "KinesisSource",
+        "type": "streamingsource",
         "properties": {
             "appName": "myKinesisApp",
             "streamName": "MyKinesisStream",
