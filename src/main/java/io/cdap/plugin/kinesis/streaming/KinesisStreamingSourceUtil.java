@@ -51,6 +51,7 @@ final class KinesisStreamingSourceUtil {
     StreamingContext streamingContext, KinesisStreamingSource.KinesisStreamConfig config) {
     BasicAWSCredentials awsCred = new BasicAWSCredentials(config.getAwsAccessKeyId(), config.getAwsAccessSecret());
     AmazonKinesisClient kinesisClient = new AmazonKinesisClient(awsCred);
+    kinesisClient.setEndpoint(config.getEndpoint());
     JavaStreamingContext javaStreamingContext = streamingContext.getSparkStreamingContext();
     Duration kinesisCheckpointInterval = new Duration(config.getDuration());
 
