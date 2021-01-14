@@ -7,34 +7,34 @@ Spark streaming source that reads from AWS Kinesis streams.
 Use Case
 --------
 This source is used when you want to read data from a Kinesis stream in real-time. For example, you may want to read
-data from a Kinesis stream write it to a CDAP dataset.
+data from a Kinesis stream, apply transformations and write transformed data to a sink.
 
 Properties
 ----------
-**appName:** The name of the Kinesis application. The application name that is used to checkpoint the Kinesis sequence
+**Application Name:** The name of the Kinesis application. The application name that is used to checkpoint the Kinesis sequence
 numbers in DynamoDB table. (Macro-enabled)
 
-**streamName:** The name of the Kinesis stream to the get the data from. The stream should be active. (Macro-enabled)
+**Stream Name:** The name of the Kinesis stream to the get the data from. The stream should be active. (Macro-enabled)
 
-**duration:** The interval in milliseconds at which the Kinesis Client Library saves its position in the stream.
+**Kinesis Endpoint Url:** Valid Kinesis endpoint URL eg. <protocol>://kinesis.us-east-1.amazonaws.com. For more information on
+ endpoint URL please look at https://docs.aws.amazon.com/general/latest/gr/ak.html (Macro-enabled)
+
+**Region:** Valid Kinesis region URL eg. ap-south-1. Default value is us-east-1.
+
+**Checkpoint Interval Duration:** The interval in milliseconds at which the Kinesis Client Library saves its position in the stream.
 (Macro-enabled)
 
-**region:** Valid Kinesis region URL eg. ap-south-1. Default value is us-east-1.
-
-**endpointUrl:** Valid Kinesis endpoint URL eg. Kinesis.us-east-1.amazonaws.com. (Macro-enabled)
-
-**accessID:** The access Id provided by AWS required to access the Kinesis streams. The Id can be stored in CDAP secure
-store and can be provided as macro configuration. (Macro-enabled)
-
-**accessKey:** AWS access key secret having access to Kinesis streams. The key can be stored in CDAP secure store and
-can be provided as macro configuration. (Macro-enabled)
-
-**initialPosition:** Initial position in the stream. Can be either TRIM_HORIZON or LATEST, Default position will be
+**Initial Position In Stream:** Initial position in the stream. Can be either TRIM_HORIZON or LATEST, Default position will be
 Latest.
 
-**format:** Optional format of the Kinesis shard payload. Any format supported by CDAP is supported. For example, a
-value of 'csv' will attempt to parse Kinesis payloads as comma-separated values. If no format is given, Kinesis payloads
-will be treated as bytes.
+**AWS Access Key Id:** The access Id provided by AWS required to access the Kinesis streams. The Id can be stored in secure
+store and can be provided as macro configuration. (Macro-enabled)
+
+**AWS Access Secret:** AWS access key secret having access to Kinesis streams. The key can be stored in secure store and
+can be provided as macro configuration. (Macro-enabled)
+
+**Format:** Optional format of the Kinesis shard payload. For example, a value of 'csv' will attempt to parse Kinesis
+ payloads as comma-separated values. If no format is given, Kinesis payloads will be treated as bytes.
 
 Example
 -------
