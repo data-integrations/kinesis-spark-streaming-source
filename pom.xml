@@ -62,7 +62,7 @@
     <properties>
         <cdap.version>6.4.1</cdap.version>
         <cdap.plugin.version>2.4.0</cdap.plugin.version>
-        <junit.version>4.11</junit.version>
+        <junit.version>4.13.1</junit.version>
         <spark.version>3.1.2</spark.version>
         <widgets.dir>widgets</widgets.dir>
         <docs.dir>docs</docs.dir>
