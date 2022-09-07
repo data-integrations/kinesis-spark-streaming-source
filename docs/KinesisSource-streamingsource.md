@@ -9,6 +9,8 @@ Use Case
 This source is used when you want to read data from a Kinesis stream in real-time. For example, you may want to read
 data from a Kinesis stream, apply transformations and write transformed data to a sink.
 
+This source requires Scala 2.12 for execution (Dataproc 1.5, Dataproc 2.0 or later).
+
 Properties
 ----------
 **Application Name:** The name of the Kinesis application. The application name that is used to checkpoint the Kinesis sequence

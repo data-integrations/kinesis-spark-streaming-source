@@ -29,9 +29,11 @@ import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.streaming.Duration;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
-import org.apache.spark.streaming.kinesis.KinesisUtils;
+import org.apache.spark.streaming.kinesis.KinesisInputDStream;
+import org.apache.spark.streaming.kinesis.SparkAWSCredentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.reflect.ClassTag;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -47,6 +49,7 @@ final class KinesisStreamingSourceUtil {
   /**
    * Returns JavaDstream.
    */
+  @SuppressWarnings("unchecked")
   static JavaDStream<StructuredRecord> getStructuredRecordJavaDStream(
     StreamingContext streamingContext, KinesisStreamingSource.KinesisStreamConfig config) {
     BasicAWSCredentials awsCred = new BasicAWSCredentials(config.getAwsAccessKeyId(), config.getAwsAccessSecret());
@@ -57,25 +60,40 @@ final class KinesisStreamingSourceUtil {
 
     int numShards = kinesisClient.describeStream(config.getStreamName()).getStreamDescription().getShards().size();
     List<JavaDStream<byte[]>> streamsList = new ArrayList<>(numShards);
+    ClassTag<byte[]> byteArrayClassTag = scala.reflect.ClassTag$.MODULE$.apply(byte[].class);
     LOG.debug("creating {} spark executors for {} shards", numShards, numShards);
     //Creating spark executors based on the number of shards in the stream
     for (int i = 0; i < numShards; i++) {
       streamsList.add(
-        KinesisUtils.createStream(javaStreamingContext, config.getAppName(), config.getStreamName(),
-                                  config.getEndpoint(), config.getRegion(), config.getInitialPosition(),
-                                  kinesisCheckpointInterval, StorageLevel.MEMORY_AND_DISK_2(),
-                                  config.getAwsAccessKeyId(), config.getAwsAccessSecret())
+        JavaDStream.fromDStream(
+        KinesisInputDStream.builder()
+          .streamingContext(javaStreamingContext)
+          .checkpointAppName(config.getAppName())
+          .streamName(config.getStreamName())
+          .endpointUrl(config.getEndpoint())
+          .regionName(config.getRegion())
+          .initialPositionInStream(config.getInitialPosition())
+          .checkpointInterval(kinesisCheckpointInterval)
+          .storageLevel(StorageLevel.MEMORY_AND_DISK_2())
+          .kinesisCredentials(SparkAWSCredentials.builder()
+                                .basicCredentials(config.getAwsAccessKeyId(), config.getAwsAccessSecret())
+                                .build())
+          .build(), byteArrayClassTag
+        )
       );
     }
 
     // Union all the streams if there is more than 1 stream
     JavaDStream<byte[]> kinesisStream;
+    kinesisStream = streamsList.get(0);
+    // Merge multiple JavaDStreams into one
     if (streamsList.size() > 1) {
-      kinesisStream = javaStreamingContext.union(streamsList.get(0), streamsList.subList(1, streamsList.size()));
-    } else {
-      // Otherwise, just use the 1 stream
-      kinesisStream = streamsList.get(0);
+      for (int i = 1; i < streamsList.size(); i++) {
+        kinesisStream = (JavaDStream<byte[]>) javaStreamingContext.union(kinesisStream, streamsList.get(i));
+      }
     }
+
+    // Apply mapping fucntion and return
     return kinesisStream.map(config.getFormat() == null ? new BytesFunction(config) : new FormatFunction(config));
   }
 

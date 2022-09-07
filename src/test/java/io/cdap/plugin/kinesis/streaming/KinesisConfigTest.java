@@ -112,10 +112,9 @@ public class KinesisConfigTest {
     MockFailureCollector collector = new MockFailureCollector();
     config.validate(collector);
     List<ValidationFailure> failures = collector.getValidationFailures();
-    Assert.assertEquals(3, failures.size());
-    Assert.assertEquals("body", failures.get(0).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
-    Assert.assertEquals("body2", failures.get(1).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
-    Assert.assertEquals("body", failures.get(2).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
+    Assert.assertEquals(2, failures.size());
+    Assert.assertEquals("body2", failures.get(0).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
+    Assert.assertEquals("body", failures.get(1).getCauses().get(0).getAttribute(CauseAttributes.OUTPUT_SCHEMA_FIELD));
   }
 
   @Test
