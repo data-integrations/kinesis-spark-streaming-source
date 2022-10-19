@@ -67,7 +67,7 @@
         <widgets.dir>widgets</widgets.dir>
         <docs.dir>docs</docs.dir>
         <main.basedir>${project.basedir}</main.basedir>
-        <jackson.version>2.12.1</jackson.version>
+        <jackson.version>2.13.4.1</jackson.version>
         <commons.lang3.version>3.5</commons.lang3.version>
     </properties>
 
